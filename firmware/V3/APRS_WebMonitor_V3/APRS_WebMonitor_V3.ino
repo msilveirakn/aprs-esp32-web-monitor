@@ -16,7 +16,10 @@ const char* WIFI_PASSWORD = "48773354";
 const char* AP_SSID = "APRS-ESP32-V3";
 const char* AP_PASSWORD = "aprs12345";
 
-const char* APRS_SERVER = "soam.aprs2.net";
+// const char* APRS_SERVER = "soam.aprs2.net";
+// const uint16_t APRS_PORT = 14580;
+
+const char* APRS_SERVER = "rotate.aprs2.net";
 const uint16_t APRS_PORT = 14580;
 
 // Recepcao somente. -1 nao autoriza transmissao.
