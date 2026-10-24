@@ -1,48 +1,122 @@
 # APRS ESP32 Web Monitor
 
-Projeto de aprendizado e desenvolvimento de um monitor APRS utilizando ESP32, display OLED SSD1306 e interface web. O objetivo é evoluir gradualmente de um painel local para um sistema capaz de receber e apresentar informações reais da rede APRS-IS.
+Projeto de aprendizado com ESP32, display OLED SSD1306 e uma interface web local para monitorar pacotes APRS recebidos pela internet por meio do serviço **APRS-IS**.
 
-O desenvolvimento é organizado por versões, mantendo o firmware e a documentação de cada etapa.
+O firmware evolui em versões incrementais, começando por um servidor web local e avançando até a conexão ao APRS-IS e à interpretação de posições APRS não comprimidas.
 
-## Objetivos do projeto
+> **Estado do projeto:** a V4 adiciona a interpretação de posições APRS não comprimidas ao monitor. Compile e teste o firmware no seu hardware antes de considerar a versão validada ou criar uma tag de lançamento.
 
-- Desenvolver uma interface web hospedada no ESP32.
-- Exibir informações do sistema em um display OLED SSD1306.
-- Aprender a trabalhar com Wi-Fi, TCP/IP, APIs HTTP e JSON.
-- Simular pacotes APRS e, posteriormente, receber dados reais.
-- Explorar possibilidades de integração futura com GPS e rádio amador.
-- Praticar organização de código, documentação e versionamento com Git e GitHub.
+## Objetivos
+
+- Aprender a desenvolver aplicações IoT com ESP32.
+- Disponibilizar uma interface web local para acompanhar o estado do dispositivo.
+- Exibir informações básicas no display OLED.
+- Receber linhas de dados do APRS-IS pela internet.
+- Manter um histórico limitado de pacotes recebidos.
+- Interpretar posições APRS não comprimidas e apresentar latitude e longitude em formato decimal.
 
 ## Hardware
 
-- ESP32.
-- Display OLED SSD1306 I2C, resolução 128 × 64 pixels.
-- Computador com Arduino IDE para desenvolvimento e gravação.
+- ESP32 compatível com Arduino IDE.
+- Display OLED SSD1306 I2C, resolução 128 × 64, endereço I2C `0x3C`.
+- Cabos de ligação.
+- Rede Wi-Fi com acesso à internet para a conexão APRS-IS.
 
-### Ligações do OLED
+### Ligação do OLED
 
 | OLED SSD1306 | ESP32 |
 |---|---|
-| VCC | Conforme a especificação do módulo |
+| VCC | Conforme a tensão aceita pelo módulo |
 | GND | GND |
 | SDA | GPIO 21 |
 | SCL | GPIO 22 |
 
-O endereço I2C configurado no firmware é `0x3C`.
+Confira a tensão aceita pelo seu módulo OLED antes de alimentar o display.
 
-## Tecnologias e bibliotecas
+## Software e bibliotecas
 
-- Arduino C++.
 - Arduino IDE.
-- ESP32 Arduino Core.
-- Wi-Fi e TCP/IP.
-- Servidor HTTP e APIs JSON.
-- HTML, CSS e JavaScript.
-- Adafruit SSD1306.
-- Adafruit GFX Library.
-- Git e GitHub.
+- Pacote de placas ESP32 da Espressif Systems.
+- `Adafruit GFX Library`.
+- `Adafruit SSD1306`.
 
-As bibliotecas `WiFi.h`, `WiFiClient.h`, `WebServer.h` e `Wire.h` são fornecidas pelo pacote de placas ESP32.
+As bibliotecas podem ser instaladas pelo gerenciador de bibliotecas da Arduino IDE.
+
+## Versões
+
+### V1 — Servidor web local
+
+- Cria uma rede Wi-Fi própria (SoftAP).
+- Disponibiliza uma página web local.
+- Exibe informações básicas do sistema no OLED.
+- Expõe o endpoint `/api/status`.
+
+Rede de exemplo:
+- SSID: `APRS-ESP32-V1`
+- Senha: `aprs12345`
+- Endereço do painel: `http://192.168.4.1`
+
+Documentação: [`docs/v1.md`](docs/v1.md)
+
+### V2 — Pacotes simulados
+
+- Mantém o painel web local.
+- Gera pacotes APRS simulados para testar a interface sem conexão ao APRS-IS.
+- Mantém um histórico circular de até 10 pacotes.
+- Disponibiliza os endpoints `/api/status` e `/api/packets`.
+- Atualiza o painel periodicamente e exibe informações no OLED.
+
+Rede de exemplo:
+- SSID: `APRS-ESP32-V2`
+- Senha: `aprs12345`
+- Endereço do painel: `http://192.168.4.1`
+
+**Importante:** os pacotes desta versão são simulados; não representam recepção real de rádio nem dados recebidos do APRS-IS.
+
+Documentação: [`docs/v2.md`](docs/v2.md)
+
+### V3 — Recepção APRS-IS
+
+- Conecta o ESP32 à rede Wi-Fi doméstica (modo Station) para acessar a internet.
+- Mantém uma rede Wi-Fi própria para acessar o painel local.
+- Abre uma conexão TCP com um servidor APRS-IS.
+- Envia a linha de login APRS-IS e recebe linhas de pacotes.
+- Mantém um histórico limitado de pacotes recebidos.
+- Exibe o estado da conexão e dados resumidos no painel e no OLED.
+
+Configuração APRS-IS usada como referência:
+- Servidor: `rotate.aprs2.net`
+- Porta TCP: `14580`
+- Filtro: `t/p`
+- Senha APRS-IS: `-1` para login somente de recepção, quando aceito pelo servidor.
+
+O indicativo `N0CALL` é apenas um valor de exemplo. Substitua-o pelo indicativo que você está autorizado a utilizar. A aceitação do login depende das regras do servidor APRS-IS; consulte a documentação do serviço se houver rejeição.
+
+**Limitação:** a V3 recebe dados pelo APRS-IS via internet. Ela não recebe diretamente transmissões RF do Baofeng UV-5R.
+
+Documentação: [`docs/v3.md`](docs/v3.md)
+
+### V4 — Interpretação de posições APRS
+
+A V4 amplia a V3 com interpretação básica de posições APRS **não comprimidas**.
+
+- Mantém a conexão Wi-Fi, o servidor web local e a conexão TCP ao APRS-IS.
+- Identifica o indicativo e o caminho do pacote.
+- Classifica tipos básicos de pacote.
+- Interpreta formatos comuns de posição não comprimida, com e sem timestamp.
+- Converte latitude e longitude para graus decimais quando o pacote contém uma posição reconhecida.
+- Mantém o conteúdo bruto do pacote para consulta.
+- Apresenta os dados interpretados no painel e no endpoint `/api/packets`.
+- Mantém o histórico limitado de pacotes.
+
+Rede local de exemplo:
+- SSID: `APRS-ESP32-V4`
+- Senha: `aprs12345`
+- Endereço do painel: `http://192.168.4.1`
+
+A V4 não pretende interpretar todos os formatos APRS. Posições comprimidas, mensagens, telemetria e outros formatos avançados podem exigir implementações adicionais. A presença de coordenadas depende do formato recebido.
+
+Documentação planejada: [`docs/v4.md`](docs/v4.md)
 
 ## Estrutura do repositório
 
@@ -55,263 +129,127 @@ aprs-esp32-web-monitor/
 │   ├── V2/
 │   │   └── APRS_WebMonitor_V2/
 │   │       └── APRS_WebMonitor_V2.ino
-│   └── V3/
-│       └── APRS_WebMonitor_V3/
-│           └── APRS_WebMonitor_V3.ino
+│   ├── V3/
+│   │   └── APRS_WebMonitor_V3/
+│   │       └── APRS_WebMonitor_V3.ino
+│   └── V4/
+│       └── APRS_WebMonitor_V4/
+│           └── APRS_WebMonitor_V4.ino
 ├── docs/
 │   ├── v1.md
 │   ├── v2.md
-│   └── v3.md
+│   ├── v3.md
+│   └── v4.md
 └── README.md
 ```
 
-Cada versão possui seu próprio diretório de firmware e documentação, permitindo consultar e recuperar implementações anteriores.
+Se algum arquivo ainda não tiver sido criado ou enviado ao GitHub, ajuste a estrutura para refletir os arquivos realmente existentes no repositório.
 
-## Versões do projeto
+## Configuração da V4
 
-### V1.0.0 — Painel web e OLED
+Abra o arquivo:
 
-**Objetivo:** criar a estrutura inicial do sistema.
+`firmware/V4/APRS_WebMonitor_V4/APRS_WebMonitor_V4.ino`
 
-Funcionalidades:
+Configure as credenciais da rede Wi-Fi que fornece acesso à internet:
 
-- Ponto de acesso Wi-Fi criado pelo ESP32.
-- Servidor web HTTP local.
-- Interface web de monitoramento.
-- API de estado do sistema.
-- Exibição de informações básicas no OLED.
-- Monitoramento do tempo de funcionamento e dos dispositivos conectados.
+```cpp
+const char* WIFI_SSID = "NOME_DA_SUA_REDE";
+const char* WIFI_PASSWORD = "SENHA_DA_SUA_REDE";
+```
 
-Configuração inicial:
+Confira também o indicativo de chamada configurado para o APRS-IS. Não publique senhas pessoais ou outras credenciais privadas no repositório.
 
-- SSID: `APRS-ESP32-V1`
-- Senha: `aprs12345`
-- Endereço do painel: `http://192.168.4.1`
+Após gravar o firmware:
 
-Documentação: [`docs/v1.md`](docs/v1.md).
+1. Abra o Monitor Serial e confira a inicialização e as mensagens de conexão.
+2. Conecte o computador ou celular à rede `APRS-ESP32-V4`.
+3. Acesse `http://192.168.4.1`.
+4. Confira o estado da conexão APRS-IS e os pacotes recebidos.
+5. Verifique se pacotes que contêm posições não comprimidas apresentam latitude e longitude interpretadas.
+6. Teste os endpoints `/api/status` e `/api/packets`.
 
-### V2.0.0 — Simulação e histórico de pacotes
+O endereço local pode variar se a configuração de rede for alterada.
 
-**Objetivo:** desenvolver a estrutura de armazenamento e visualização de pacotes semelhantes aos utilizados no APRS.
+## Endpoints HTTP
 
-Funcionalidades:
-
-- Estrutura de dados para pacotes.
-- Histórico circular limitado a 10 registros.
-- Dados de demonstração e geração periódica de pacotes simulados.
-- Painel web com atualização automática.
-- API JSON para consultar estado e histórico.
-- Exibição do último indicativo e da quantidade de registros no OLED.
-
-Configuração inicial:
-
-- SSID: `APRS-ESP32-V2`
-- Senha: `aprs12345`
-- Endereço do painel: `http://192.168.4.1`
-
-**Importante:** a V2 simula pacotes. Ela não recebe dados reais de rádio nem da rede APRS-IS.
-
-Documentação: [`docs/v2.md`](docs/v2.md).
-
-### V3.0.0 — Recepção APRS-IS pela internet
-
-**Objetivo:** conectar o ESP32 à rede APRS-IS e receber linhas reais de pacotes pela internet.
-
-Funcionalidades:
-
-- Wi-Fi em modo Station para acessar a internet.
-- Ponto de acesso próprio para continuar acessando o painel.
-- Conexão TCP com APRS-IS.
-- Login de recepção utilizando `pass -1`.
-- Filtro APRS-IS configurável.
-- Histórico circular dos últimos 10 pacotes recebidos.
-- API JSON para estado e histórico.
-- Painel web com atualização automática.
-- Informações de conexão no OLED.
-- Tentativas de reconexão após falhas.
-
-Configuração do ponto de acesso:
-
-- SSID: `APRS-ESP32-V3`
-- Senha: `aprs12345`
-- Endereço do painel: `http://192.168.4.1`
-
-Configuração APRS-IS utilizada:
-
-- Servidor: `rotate.aprs2.net`
-- Porta: `14580`
-- Senha de recepção: `-1`
-- Filtro inicial: `t/p`
-
-O servidor e o filtro podem ser alterados no firmware conforme a disponibilidade do serviço e as necessidades do projeto.
-
-#### Endpoints da API
-
-| Endpoint | Descrição |
+| Endpoint | Finalidade |
 |---|---|
 | `/` | Painel web |
-| `/api/status` | Estado do Wi-Fi, APRS-IS, contadores e tempo ligado |
-| `/api/packets` | Histórico dos pacotes recebidos |
+| `/api/status` | Estado resumido do sistema e das conexões |
+| `/api/packets` | Histórico de pacotes e, na V4, campos interpretados disponíveis |
 
-#### Limitações da V3
+Os campos exatos do JSON podem variar conforme a versão do firmware. Consulte o código e a documentação da versão usada.
 
-- Recebe dados pela internet, não diretamente pelo Baofeng UV-5R.
-- Não transmite pacotes para APRS-IS.
-- Armazena as linhas recebidas como texto bruto.
-- Ainda não interpreta coordenadas, símbolos e demais campos APRS em estruturas específicas.
-- O histórico fica na RAM e é perdido quando o ESP32 reinicia.
-- A conexão TCP desta implementação não utiliza TLS.
+## Como funciona a conexão APRS-IS
 
-Documentação: [`docs/v3.md`](docs/v3.md).
+O ESP32 usa a rede Wi-Fi doméstica para acessar um servidor APRS-IS por TCP. A rede criada pelo próprio ESP32 permite abrir o painel local. Assim, o dispositivo utiliza simultaneamente a conexão Wi-Fi de acesso à internet e o ponto de acesso local.
 
-## Roadmap
+A porta TCP `14580` é comumente usada para conexões APRS-IS sem TLS. O projeto não deve ser tratado como uma implementação de comunicação segura por TLS.
 
-- [x] V1 — Painel web e display OLED.
-- [x] V2 — Simulação e histórico de pacotes.
-- [x] V3 — Recepção APRS-IS pela internet.
-- [ ] V4 — Interpretação estruturada dos pacotes APRS.
-- [ ] Versões futuras — Exibição de coordenadas e informações de estações.
-- [ ] Versões futuras — Avaliação da integração com GPS.
-- [ ] Versões futuras — Pesquisa e desenvolvimento de integração com rádio amador ou TNC.
+O filtro `t/p` é um exemplo de filtro APRS-IS; consulte a documentação do APRS-IS para entender seu alcance e ajustar os dados recebidos.
 
-O roadmap representa a direção planejada, não funcionalidades já implementadas.
+## Limitações conhecidas
 
-## Instalação e execução
+- A recepção de pacotes das versões V3 e V4 é via internet/APRS-IS, não diretamente por RF.
+- O projeto não transforma o ESP32 em um transceptor.
+- O firmware não substitui um TNC ou uma interface de rádio apropriada para receber APRS por RF.
+- A V4 interpreta apenas formatos de posição não comprimida contemplados no parser.
+- O histórico é limitado e mantido em memória; não é um banco de dados persistente.
+- Reiniciar ou desligar o ESP32 apaga o histórico mantido em RAM.
+- O painel só pode receber dados enquanto o firmware estiver em execução e as conexões necessárias estiverem funcionando.
 
-### 1. Preparar o Arduino IDE
+## Versionamento e GitHub
 
-Instale o pacote de placas ESP32 e as bibliotecas:
+As versões devem permanecer em pastas separadas para facilitar a comparação e evitar perder versões anteriores.
 
-- Adafruit SSD1306.
-- Adafruit GFX Library.
-
-### 2. Abrir o firmware
-
-Escolha o arquivo `.ino` correspondente à versão desejada dentro de `firmware/`.
-
-### 3. Configurar a versão
-
-Na V1 e na V2, conecte-se ao ponto de acesso criado pelo ESP32.
-
-Na V3, configure as credenciais da rede Wi-Fi no firmware para permitir o acesso à internet. O ESP32 também cria seu próprio ponto de acesso.
-
-**Não publique credenciais pessoais de Wi-Fi em um repositório público.** Antes de executar `git add`, confira as alterações e certifique-se de que o código contém apenas valores de demonstração.
-
-### 4. Compilar e gravar
-
-Selecione a placa ESP32 correta, escolha a porta serial e grave o firmware.
-
-### 5. Acessar o painel
-
-Na V3, conecte o computador ou celular à rede `APRS-ESP32-V3` e acesse:
-
-`http://192.168.4.1`
-
-Também é possível acessar o painel pelo endereço IP do ESP32 na rede doméstica, desde que o dispositivo cliente consiga alcançá-lo.
-
-## Versionamento com Git
-
-O projeto utiliza Git para registrar as alterações e tags para identificar versões estáveis.
-
-### Convenção de commits
-
-| Prefixo | Utilização | Exemplo |
-|---|---|---|
-| `feat:` | Nova funcionalidade | `feat: add APRS-IS reception` |
-| `fix:` | Correção de bug | `fix: correct packet history in V2` |
-| `docs:` | Documentação | `docs: update V3 instructions` |
-| `refactor:` | Reorganização do código | `refactor: simplify packet handling` |
-| `chore:` | Manutenção geral | `chore: update project configuration` |
-
-### Fluxo normal de desenvolvimento
-
-Confira as alterações:
+### Conferir as alterações
 
 ```bash
 git status
-git diff
 git diff --check
+git diff
 ```
 
-Adicione os arquivos modificados:
+### Adicionar os arquivos da V4
+
+Depois de conferir e testar os arquivos:
 
 ```bash
-git add caminho/do/arquivo
-```
-
-Registre o commit:
-
-```bash
-git commit -m "fix: describe the correction"
-```
-
-Envie para o GitHub:
-
-```bash
+git add README.md docs/v4.md firmware/V4/
+git diff --cached
+git commit -m "feat: add APRS position parsing in V4"
 git push origin main
 ```
 
-Substitua o caminho e a mensagem pelos dados da alteração real.
+Se `docs/v4.md` ainda não existir, crie-o antes de executar `git add`.
 
-### Criar uma nova versão estável
+### Criar uma tag de versão
 
-Depois de testar a implementação, crie uma tag anotada. Por exemplo, para uma versão `v3.0.1`:
-
-```bash
-git tag -a v3.0.1 -m "APRS Web Monitor V3.0.1"
-git push origin v3.0.1
-```
-
-Use um número de versão que ainda não exista. As tags publicadas devem identificar commits específicos e não devem ser reutilizadas para apontar para código diferente.
-
-## Manutenção de versões antigas
-
-Como o desenvolvimento principal ocorre na `main`, correções de versões anteriores devem ser feitas em branches de manutenção quando não se deseja incluir funcionalidades mais recentes.
-
-Por exemplo, para trabalhar na V2 a partir da tag `v2.0.0`:
+Crie uma tag somente depois de compilar e testar o firmware e revisar a documentação. Confira primeiro as tags existentes:
 
 ```bash
-git switch -c maintenance/v2 v2.0.0
+git tag --list
 ```
 
-Depois de corrigir e testar o firmware:
+Se `v4.0.0` ainda não existir e a versão estiver validada:
 
 ```bash
-git add firmware/V2/APRS_WebMonitor_V2/APRS_WebMonitor_V2.ino
-git commit -m "fix: correct packet history in V2"
-git tag -a v2.0.1 -m "APRS Web Monitor V2.0.1"
-git push -u origin maintenance/v2
-git push origin v2.0.1
+git tag -a v4.0.0 -m "APRS ESP32 Web Monitor V4"
+git push origin v4.0.0
 ```
 
-Esse fluxo mantém a correção da V2 separada do desenvolvimento da V3 na `main`.
+Não reutilize nem mova uma tag já publicada. Tags apontam para commits específicos; alterações posteriores no `main` não modificam o conteúdo de uma tag antiga.
 
-Se a branch de manutenção já existir, utilize-a em vez de criar outra com o mesmo nome. Caso a documentação da V2 também seja alterada, inclua `docs/v2.md` no commit.
+## Próximas melhorias possíveis
 
-## Objetivos educacionais
+- Suporte a posições APRS comprimidas.
+- Interpretação de mensagens e telemetria.
+- Melhorias de robustez no processamento de linhas TCP.
+- Exibição de símbolos APRS e detalhes adicionais no painel.
+- Armazenamento persistente de pacotes.
+- Integração com um receptor de rádio/TNC apropriado para APRS por RF, em uma etapa separada.
 
-Este projeto é desenvolvido como um laboratório prático para estudar:
+## Aviso
 
-- Programação embarcada com ESP32.
-- Redes Wi-Fi e comunicação TCP/IP.
-- Servidores HTTP e APIs JSON.
-- Desenvolvimento de interfaces web embarcadas.
-- Comunicação I2C com displays OLED.
-- Protocolo APRS e acesso à rede APRS-IS.
-- Organização de código e documentação técnica.
-- Controle de versão com Git e GitHub.
-
-## Segurança e uso responsável
-
-- Não publique senhas de redes Wi-Fi.
-- Use identificações e credenciais compatíveis com as regras de acesso ao APRS-IS.
-- Mantenha a recepção separada de qualquer implementação de transmissão.
-- Observe as normas aplicáveis ao serviço de radioamador antes de desenvolver funcionalidades que envolvam transmissão por rádio.
-
-## Licença
-
-A licença do projeto ainda deve ser definida antes de conceder permissões formais de reutilização e redistribuição. Até que uma licença seja escolhida e adicionada ao repositório, não presuma que o código esteja liberado sob uma licença de código aberto.
-
----
-
-Projeto desenvolvido de forma incremental para fins educacionais e experimentais.
+Este projeto é educacional. Valide o firmware no hardware antes de publicar uma versão de lançamento. Respeite as regras aplicáveis ao uso de indicativos, radioamadorismo e serviços APRS.
